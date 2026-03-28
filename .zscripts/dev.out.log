@@ -467,3 +467,21 @@ Error: ENVIRONMENT_FALLBACK: There is no `timeZone` configured, this can lead to
  GET /pt-BR 200 in 119ms (compile: 33ms, proxy.ts: 9ms, generate-params: 28ms, render: 77ms)
   Reload env: .env.local
  GET /pt-BR 200 in 210ms (compile: 124ms, proxy.ts: 31ms, generate-params: 54ms, render: 55ms)
+Error: ENVIRONMENT_FALLBACK: There is no `timeZone` configured, this can lead to markup mismatches caused by environment differences. Consider adding a global default: https://next-intl.dev/docs/configuration#time-zone
+    at HomePage (src/app/[locale]/page.tsx:19:28)
+  17 |
+  18 | export default function HomePage() {
+> 19 |   const t = useTranslations();
+     |                            ^
+  20 |
+  21 |   return (
+  22 |     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20"> {
+  code: 'ENVIRONMENT_FALLBACK',
+  originalMessage: 'There is no `timeZone` configured, this can lead to markup mismatches caused by environment differences. Consider adding a global default: https://next-intl.dev/docs/configuration#time-zone'
+}
+ GET /pt-BR 200 in 253ms (compile: 41ms, proxy.ts: 10ms, generate-params: 35ms, render: 202ms)
+ GET /pt-BR 200 in 124ms (compile: 38ms, proxy.ts: 11ms, generate-params: 31ms, render: 75ms)
+✓ Compiled in 245ms
+✓ Compiled in 192ms
+✓ Compiled in 132ms
+✓ Compiled in 51ms

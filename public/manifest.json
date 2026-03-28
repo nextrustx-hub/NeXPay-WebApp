@@ -1,0 +1,53 @@
+{
+  "name": "NeXPay - Gateway de Pagamentos",
+  "short_name": "NeXPay",
+  "description": "Gateway de pagamentos digitais e conta institucional BRL com operações PIX",
+  "start_url": "/pt-BR/dashboard",
+  "display": "standalone",
+  "background_color": "#0D0D0D",
+  "theme_color": "#00E6C3",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "pt-BR",
+  "categories": ["finance", "business", "utilities"],
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "wide"
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false,
+  "shortcuts": [
+    {
+      "name": "Depósito PIX",
+      "short_name": "Depósito",
+      "description": "Fazer um depósito via PIX",
+      "url": "/pt-BR/deposit",
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Saque PIX",
+      "short_name": "Saque",
+      "description": "Realizar um saque via PIX",
+      "url": "/pt-BR/withdraw",
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+    }
+  ]
+}

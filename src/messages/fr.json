@@ -44,7 +44,10 @@
     "yes": "Oui",
     "no": "Non",
     "learnMore": "En savoir plus",
-    "getStarted": "Commencer"
+    "getStarted": "Commencer",
+    "support": "Support",
+    "supportWhatsApp": "WhatsApp",
+    "supportEmail": "E-mail"
   },
   "auth": {
     "login": "Se connecter",
@@ -74,7 +77,7 @@
     "unauthorized": "Accès non autorisé"
   },
   "dashboard": {
-    "title": "Tableau de bord",
+    "title": "Gateway NeXPay",
     "welcome": "Bienvenue sur NeXPay",
     "overview": "Aperçu",
     "totalBalance": "Solde total",
@@ -256,6 +259,13 @@
     "deleteAccount": "Supprimer le compte",
     "deleteAccountWarning": "Cette action est irréversible. Toutes vos données seront définitivement supprimées.",
     "confirmDeleteAccount": "Confirmer la suppression du compte"
+  },
+  "footer": {
+    "terms": "Conditions",
+    "privacy": "Confidentialité",
+    "support": "Support",
+    "copyright": "© 2024 NeXPay. Tous droits réservés.",
+    "poweredBy": "Powered by NeXTrustX"
   },
   "errors": {
     "generic": "Une erreur s'est produite. Veuillez réessayer.",

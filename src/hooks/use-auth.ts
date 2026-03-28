@@ -1,23 +1,43 @@
 import { useCallback } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { useAuthStore, selectUser, selectIsAuthenticated, selectIsLoading, selectToken } from '@/store/auth-store';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAuthStore } from '@/store/auth-store';
 import { api } from '@/lib/axios';
 import type {
   LoginRequest,
   AuthResponse,
   RegisterRequest,
   User,
-  Balance,
+  MeResponse,
+  Balances,
   BalanceResponse,
   Transaction,
   TransactionListResponse,
   TransactionsQueryParams,
+  DepositRequest,
+  DepositResponse,
+  DepositStatusResponse,
+  WithdrawRequest,
+  WithdrawResponse,
+  SwapRequest,
+  SwapResponse,
+  APIKey,
+  APIKeyListResponse,
+  CreateAPIKeyResponse,
+  WebhookConfigRequest,
+  WebhookConfigResponse,
 } from '@/lib/api-types';
+
+// ============================================
+// Auth Selectors
+// ============================================
+const selectUser = (state: ReturnType<typeof useAuthStore.getState>) => state.user;
+const selectIsAuthenticated = (state: ReturnType<typeof useAuthStore.getState>) => state.isAuthenticated;
+const selectIsLoading = (state: ReturnType<typeof useAuthStore.getState>) => state.isLoading;
+const selectToken = (state: ReturnType<typeof useAuthStore.getState>) => state.token;
 
 // ============================================
 // Main Auth Hook
 // ============================================
-
 export function useAuth() {
   const store = useAuthStore();
   const user = useAuthStore(selectUser);
@@ -32,8 +52,13 @@ export function useAuth() {
       return response.data;
     },
     onSuccess: (data) => {
-      if (data.success && data.data) {
-        store.setAuth(data.data.token, data.data.user);
+      if (data.success && data.access_token) {
+        // Fetch user data after login
+        api.get<MeResponse>('/auth/me').then((meResponse) => {
+          if (meResponse.data.success && meResponse.data.data?.user) {
+            store.setAuth(data.access_token, meResponse.data.data.user);
+          }
+        });
       }
     },
   });
@@ -41,12 +66,20 @@ export function useAuth() {
   // Register mutation
   const registerMutation = useMutation({
     mutationFn: async (userData: RegisterRequest): Promise<AuthResponse> => {
-      const response = await api.post<AuthResponse>('/auth/register', userData);
+      const response = await api.post<AuthResponse>('/auth/register', {
+        ...userData,
+        tier: userData.tier || 'WHITE',
+      });
       return response.data;
     },
     onSuccess: (data) => {
-      if (data.success && data.data) {
-        store.setAuth(data.data.token, data.data.user);
+      if (data.success && data.access_token) {
+        // Fetch user data after registration
+        api.get<MeResponse>('/auth/me').then((meResponse) => {
+          if (meResponse.data.success && meResponse.data.data?.user) {
+            store.setAuth(data.access_token, meResponse.data.data.user);
+          }
+        });
       }
     },
   });
@@ -54,7 +87,6 @@ export function useAuth() {
   // Logout function
   const logout = useCallback(async () => {
     try {
-      // Optionally call logout endpoint to invalidate token on server
       await api.post('/auth/logout');
     } catch {
       // Ignore errors on logout
@@ -66,9 +98,9 @@ export function useAuth() {
   // Refresh user data
   const refreshUser = useCallback(async () => {
     try {
-      const response = await api.get<{ success: boolean; data: User }>('/auth/me');
-      if (response.data.success && response.data.data) {
-        store.setUser(response.data.data);
+      const response = await api.get<MeResponse>('/auth/me');
+      if (response.data.success && response.data.data?.user) {
+        store.setUser(response.data.data.user);
       }
     } catch (error) {
       console.error('Failed to refresh user:', error);
@@ -76,25 +108,18 @@ export function useAuth() {
   }, [store]);
 
   return {
-    // State
     user,
     isAuthenticated,
     isLoading,
     token,
-    
-    // Actions
     login: loginMutation.mutate,
     register: registerMutation.mutate,
     logout,
     refreshUser,
-    
-    // Mutation states
     isLoggingIn: loginMutation.isPending,
     isRegistering: registerMutation.isPending,
     loginError: loginMutation.error,
     registerError: registerMutation.error,
-    
-    // Reset mutations
     resetLogin: loginMutation.reset,
     resetRegister: registerMutation.reset,
   };
@@ -103,20 +128,19 @@ export function useAuth() {
 // ============================================
 // Balance Hook
 // ============================================
-
 export function useBalance() {
   const isAuthenticated = useAuthStore(selectIsAuthenticated);
   const token = useAuthStore(selectToken);
 
   const query = useQuery({
     queryKey: ['balance', token],
-    queryFn: async (): Promise<Balance | null> => {
+    queryFn: async (): Promise<Balances | null> => {
       const response = await api.get<BalanceResponse>('/wallet/balance');
-      return response.data.success ? response.data.data : null;
+      return response.data.success ? response.data.balances : null;
     },
     enabled: isAuthenticated && !!token,
-    refetchInterval: 30000, // Refresh every 30 seconds
-    staleTime: 10000, // Consider stale after 10 seconds
+    refetchInterval: 30000,
+    staleTime: 10000,
   });
 
   return {
@@ -131,7 +155,6 @@ export function useBalance() {
 // ============================================
 // Profile Hook
 // ============================================
-
 export function useProfile() {
   const isAuthenticated = useAuthStore(selectIsAuthenticated);
   const store = useAuthStore();
@@ -139,22 +162,11 @@ export function useProfile() {
   const query = useQuery({
     queryKey: ['profile'],
     queryFn: async (): Promise<User | null> => {
-      const response = await api.get<{ success: boolean; data: User }>('/auth/me');
-      return response.data.success ? response.data.data : null;
+      const response = await api.get<MeResponse>('/auth/me');
+      return response.data.success ? response.data.data.user : null;
     },
     enabled: isAuthenticated,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-
-  // Update profile mutation
-  const updateMutation = useMutation({
-    mutationFn: async (data: Partial<User>): Promise<User> => {
-      const response = await api.patch<{ success: boolean; data: User }>('/auth/me', data);
-      return response.data.data;
-    },
-    onSuccess: (user) => {
-      store.setUser(user);
-    },
+    staleTime: 5 * 60 * 1000,
   });
 
   return {
@@ -162,56 +174,230 @@ export function useProfile() {
     isLoading: query.isLoading,
     error: query.error,
     refetch: query.refetch,
-    
-    // Update
-    updateProfile: updateMutation.mutate,
-    isUpdating: updateMutation.isPending,
-    updateError: updateMutation.error,
   };
 }
 
 // ============================================
-// Password Change Hook
+// Transactions Hook
 // ============================================
+export function useTransactions(params?: TransactionsQueryParams) {
+  const isAuthenticated = useAuthStore(selectIsAuthenticated);
 
-export function useChangePassword() {
-  const mutation = useMutation({
-    mutationFn: async (data: {
-      currentPassword: string;
-      newPassword: string;
-      confirmPassword: string;
-    }): Promise<void> => {
-      await api.post('/auth/change-password', data);
+  const query = useQuery({
+    queryKey: ['transactions', params],
+    queryFn: async (): Promise<{ transactions: Transaction[]; total: number } | null> => {
+      const response = await api.get<TransactionListResponse>('/transactions', {
+        params: {
+          limit: params?.limit || 10,
+          type: params?.type,
+        },
+      });
+      
+      if (response.data.success && response.data.data) {
+        return {
+          transactions: response.data.data.transactions,
+          total: response.data.data.transactions.length,
+        };
+      }
+      return null;
+    },
+    enabled: isAuthenticated,
+    staleTime: 30000,
+  });
+
+  return {
+    transactions: query.data?.transactions || [],
+    total: query.data?.total || 0,
+    isLoading: query.isLoading,
+    isFetching: query.isFetching,
+    error: query.error,
+    refetch: query.refetch,
+  };
+}
+
+// ============================================
+// Deposit Hook
+// ============================================
+export function useDeposit() {
+  const createDepositMutation = useMutation({
+    mutationFn: async (data: DepositRequest): Promise<DepositResponse> => {
+      const response = await api.post<DepositResponse>('/wallet/deposit/fiat', data);
+      return response.data;
+    },
+  });
+
+  const checkStatusMutation = useMutation({
+    mutationFn: async (transactionId: string): Promise<DepositStatusResponse> => {
+      const response = await api.get<DepositStatusResponse>(`/wallet/deposit/status/${transactionId}`);
+      return response.data;
     },
   });
 
   return {
-    changePassword: mutation.mutate,
-    isChanging: mutation.isPending,
-    error: mutation.error,
-    isSuccess: mutation.isSuccess,
-    reset: mutation.reset,
+    createDeposit: createDepositMutation.mutate,
+    isCreating: createDepositMutation.isPending,
+    depositData: createDepositMutation.data,
+    depositError: createDepositMutation.error,
+    checkStatus: checkStatusMutation.mutate,
+    isCheckingStatus: checkStatusMutation.isPending,
+    statusData: checkStatusMutation.data,
   };
 }
 
 // ============================================
-// Auth Check Hook (for protected routes)
+// Withdraw Hook
 // ============================================
+export function useWithdraw() {
+  const withdrawMutation = useMutation({
+    mutationFn: async (data: WithdrawRequest): Promise<WithdrawResponse> => {
+      const response = await api.post<WithdrawResponse>('/wallet/withdraw/fiat', data);
+      return response.data;
+    },
+  });
 
+  return {
+    withdraw: withdrawMutation.mutate,
+    isWithdrawing: withdrawMutation.isPending,
+    withdrawData: withdrawMutation.data,
+    withdrawError: withdrawMutation.error,
+  };
+}
+
+// ============================================
+// Swap Hook
+// ============================================
+export function useSwap() {
+  const swapMutation = useMutation({
+    mutationFn: async (data: SwapRequest): Promise<SwapResponse> => {
+      const response = await api.post<SwapResponse>('/wallet/swap', data);
+      return response.data;
+    },
+  });
+
+  return {
+    swap: swapMutation.mutate,
+    isSwapping: swapMutation.isPending,
+    swapData: swapMutation.data,
+    swapError: swapMutation.error,
+  };
+}
+
+// ============================================
+// API Keys Hook
+// ============================================
+export function useAPIKeys() {
+  const queryClient = useQueryClient();
+  const isAuthenticated = useAuthStore(selectIsAuthenticated);
+
+  const { data, isLoading, isFetching, error, refetch } = useQuery({
+    queryKey: ['api-keys'],
+    queryFn: async (): Promise<APIKey[]> => {
+      const response = await api.get<APIKeyListResponse>('/b2b/api-keys');
+      return response.data.success ? response.data.data : [];
+    },
+    enabled: isAuthenticated,
+    staleTime: 30000,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (name?: string): Promise<CreateAPIKeyResponse> => {
+      const response = await api.post<CreateAPIKeyResponse>('/b2b/api-keys/generate', { name });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['api-keys'] });
+    },
+  });
+
+  const revokeMutation = useMutation({
+    mutationFn: async (keyId: string) => {
+      await api.delete(`/b2b/api-keys/${keyId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['api-keys'] });
+    },
+  });
+
+  return {
+    apiKeys: data || [],
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+    createKey: createMutation.mutate,
+    isCreating: createMutation.isPending,
+    createdKey: createMutation.data,
+    createError: createMutation.error,
+    revokeKey: revokeMutation.mutate,
+    isRevoking: revokeMutation.isPending,
+  };
+}
+
+// ============================================
+// Webhook Hook
+// ============================================
+export function useWebhook() {
+  const queryClient = useQueryClient();
+  const isAuthenticated = useAuthStore(selectIsAuthenticated);
+
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ['webhook'],
+    queryFn: async (): Promise<WebhookConfigResponse | null> => {
+      const response = await api.get<WebhookConfigResponse>('/b2b/webhooks');
+      return response.data.success ? response.data : null;
+    },
+    enabled: isAuthenticated,
+    staleTime: 60000,
+  });
+
+  const configMutation = useMutation({
+    mutationFn: async (webhookUrl: string): Promise<WebhookConfigResponse> => {
+      const response = await api.post<WebhookConfigResponse>('/b2b/webhooks/config', {
+        webhook_url: webhookUrl,
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['webhook'] });
+    },
+  });
+
+  const testMutation = useMutation({
+    mutationFn: async () => {
+      const response = await api.post('/b2b/webhooks/test');
+      return response.data;
+    },
+  });
+
+  return {
+    webhook: data,
+    isLoading,
+    error,
+    refetch,
+    configWebhook: configMutation.mutate,
+    isConfiguring: configMutation.isPending,
+    configError: configMutation.error,
+    testWebhook: testMutation.mutate,
+    isTesting: testMutation.isPending,
+  };
+}
+
+// ============================================
+// Auth Check Hook
+// ============================================
 export function useAuthCheck() {
   const isAuthenticated = useAuthStore(selectIsAuthenticated);
   const isLoading = useAuthStore(selectIsLoading);
   const token = useAuthStore(selectToken);
   const store = useAuthStore();
 
-  // If we have a token but user data is missing, try to fetch it
   useQuery({
     queryKey: ['auth-check'],
     queryFn: async (): Promise<User | null> => {
-      const response = await api.get<{ success: boolean; data: User }>('/auth/me');
-      if (response.data.success && response.data.data) {
-        store.setUser(response.data.data);
-        return response.data.data;
+      const response = await api.get<MeResponse>('/auth/me');
+      if (response.data.success && response.data.data?.user) {
+        store.setUser(response.data.data.user);
+        return response.data.data.user;
       }
       return null;
     },
@@ -224,50 +410,5 @@ export function useAuthCheck() {
     isAuthenticated,
     isLoading,
     hasToken: !!token,
-  };
-}
-
-// ============================================
-// Transactions Hook
-// ============================================
-
-export function useTransactions(params?: TransactionsQueryParams) {
-  const isAuthenticated = useAuthStore(selectIsAuthenticated);
-
-  const query = useQuery({
-    queryKey: ['transactions', params],
-    queryFn: async (): Promise<{ transactions: Transaction[]; total: number } | null> => {
-      const response = await api.get<TransactionListResponse>('/transactions', {
-        params: {
-          limit: params?.limit || 10,
-          page: params?.page || 1,
-          type: params?.type,
-          status: params?.status,
-          startDate: params?.startDate,
-          endDate: params?.endDate,
-          sortBy: params?.sortBy || 'createdAt',
-          sortOrder: params?.sortOrder || 'desc',
-        },
-      });
-      
-      if (response.data.success && response.data.data) {
-        return {
-          transactions: response.data.data.transactions,
-          total: response.data.data.pagination.total,
-        };
-      }
-      return null;
-    },
-    enabled: isAuthenticated,
-    staleTime: 30000, // 30 seconds
-  });
-
-  return {
-    transactions: query.data?.transactions || [],
-    total: query.data?.total || 0,
-    isLoading: query.isLoading,
-    isFetching: query.isFetching,
-    error: query.error,
-    refetch: query.refetch,
   };
 }

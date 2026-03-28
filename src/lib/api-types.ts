@@ -1,147 +1,101 @@
 // ============================================
+// NeXPay API Types - Backend V2 Contract
+// ============================================
+
+// ============================================
 // User & Authentication Types
 // ============================================
+
+export type Tier = 'WHITE' | 'BLACK';
+export type KycStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
 export interface User {
   id: string;
   email: string;
   name: string;
-  phone?: string;
-  document?: string;
-  documentType?: 'cpf' | 'cnpj';
-  status: 'active' | 'inactive' | 'pending_verification' | 'suspended';
-  kycLevel: 'none' | 'basic' | 'advanced';
-  createdAt: string;
-  updatedAt: string;
-  avatarUrl?: string;
+  cpf?: string;
+  role: Tier;
+  kyc_status: KycStatus;
+  webhook_url?: string | null;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface AuthResponse {
   success: boolean;
-  data: {
-    token: string;
-    user: User;
-    refreshToken?: string;
-    expiresIn?: number;
-  };
-  message?: string;
+  access_token: string;
+  tier: Tier;
+  user?: User;
 }
 
 export interface LoginRequest {
   email: string;
   password: string;
-  rememberMe?: boolean;
 }
 
 export interface RegisterRequest {
+  email: string;
+  password: string;
   name: string;
-  email: string;
-  password: string;
-  confirmPassword: string;
-  phone?: string;
-  document?: string;
-  documentType?: 'cpf' | 'cnpj';
+  tier?: Tier;
 }
 
-export interface ForgotPasswordRequest {
-  email: string;
-}
-
-export interface ResetPasswordRequest {
-  token: string;
-  password: string;
-  confirmPassword: string;
+export interface MeResponse {
+  success: boolean;
+  data: {
+    user: User;
+  };
 }
 
 // ============================================
 // Wallet & Balance Types
 // ============================================
 
-export interface Wallet {
-  id: string;
-  userId: string;
-  status: 'active' | 'frozen' | 'closed';
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface Balance {
-  available: number;
-  pending: number;
-  frozen: number;
-  currency: string;
-  lastUpdated: string;
+export interface Balances {
+  BRL: number;
+  EUR: number;
+  USDT: number;
+  BTC: number;
 }
 
 export interface BalanceResponse {
   success: boolean;
-  data: Balance;
+  balances: Balances;
 }
 
 // ============================================
 // Transaction Types
 // ============================================
 
-export type TransactionType = 
-  | 'deposit' 
-  | 'withdraw' 
-  | 'transfer' 
-  | 'pix_received' 
-  | 'pix_sent';
-
-export type TransactionStatus = 
-  | 'pending' 
-  | 'processing' 
-  | 'completed' 
-  | 'failed' 
-  | 'cancelled';
+export type TransactionType = 'deposit' | 'withdraw' | 'swap';
+export type TransactionMethod = 'pix' | 'bank_transfer' | 'crypto';
+export type TransactionStatus = 'pending' | 'completed' | 'failed' | 'cancelled' | 'processing';
 
 export interface Transaction {
   id: string;
-  walletId: string;
   type: TransactionType;
+  method: TransactionMethod;
+  currency_from: string;
+  amount_from: string;
+  currency_to?: string;
+  amount_to?: string;
   status: TransactionStatus;
-  amount: number;
-  fee: number;
-  netAmount: number;
-  currency: string;
+  created_at: string;
+  updated_at?: string;
+  pix_key?: string;
   description?: string;
-  metadata?: Record<string, unknown>;
-  pixCode?: string;
-  pixQrCode?: string;
-  expiresAt?: string;
-  completedAt?: string;
-  createdAt: string;
-  updatedAt: string;
 }
 
 export interface TransactionListResponse {
   success: boolean;
   data: {
     transactions: Transaction[];
-    pagination: {
-      page: number;
-      limit: number;
-      total: number;
-      totalPages: number;
-    };
   };
 }
 
-export interface TransactionDetailsResponse {
-  success: boolean;
-  data: Transaction;
-}
-
 export interface TransactionsQueryParams {
-  page?: number;
   limit?: number;
   type?: TransactionType;
-  status?: TransactionStatus;
-  startDate?: string;
-  endDate?: string;
-  sortBy?: 'createdAt' | 'amount';
-  sortOrder?: 'asc' | 'desc';
 }
 
 // ============================================
@@ -150,82 +104,68 @@ export interface TransactionsQueryParams {
 
 export interface DepositRequest {
   amount: number;
-  method: 'pix' | 'bank_transfer';
-  metadata?: Record<string, unknown>;
+  currency: 'BRL';
 }
 
 export interface DepositResponse {
   success: boolean;
+  type: 'PIX_DYNAMIC';
+  qr_code: string;       // Base64 QR Code
+  copy_paste: string;    // PIX code
+  transactionId: string;
+}
+
+export interface DepositStatusResponse {
+  success: boolean;
   data: {
-    transactionId: string;
-    pixCode?: string;
-    pixQrCode?: string;
-    amount: number;
-    expiresAt: string;
+    status: 'pending' | 'completed';
   };
-  message?: string;
 }
 
 // ============================================
 // Withdraw Types
 // ============================================
 
-export type PixKeyType = 'cpf' | 'cnpj' | 'email' | 'phone' | 'random';
-
 export interface WithdrawRequest {
   amount: number;
-  method: 'pix' | 'bank_account';
-  pixKey?: string;
-  pixKeyType?: PixKeyType;
-  bankInfo?: {
-    bankCode: string;
-    bankName: string;
-    agency: string;
-    account: string;
-    accountType: 'checking' | 'savings';
-    document: string;
-    name: string;
-  };
-}
-
-export interface WithdrawSimulateResponse {
-  success: boolean;
-  data: {
-    amount: number;
-    fee: number;
-    netAmount: number;
-    estimatedArrival: string;
-  };
+  currency: 'BRL';
+  pix_key: string;
 }
 
 export interface WithdrawResponse {
   success: boolean;
-  data: {
-    transactionId: string;
-    status: TransactionStatus;
-    amount: number;
-    fee: number;
-    netAmount: number;
-    estimatedArrival?: string;
-  };
-  message?: string;
+  transactionId: string;
+  message: string;
 }
 
 // ============================================
-// API Key Types
+// Swap Types
+// ============================================
+
+export interface SwapRequest {
+  from: 'BRL' | 'EUR' | 'USDT' | 'BTC';
+  to: 'BRL' | 'EUR' | 'USDT' | 'BTC';
+  amount: number;
+}
+
+export interface SwapResponse {
+  success: boolean;
+  from_amount: number;
+  to_amount: number;
+  fee_applied: string;
+  transaction_id: string;
+}
+
+// ============================================
+// API Key Types (B2B)
 // ============================================
 
 export interface APIKey {
   id: string;
-  name: string;
-  key: string;
-  prefix: string;
-  status: 'active' | 'revoked';
-  permissions: string[];
-  lastUsedAt?: string;
-  expiresAt?: string;
-  createdAt: string;
-  revokedAt?: string;
+  key: string;           // Masked: sk_live_...1234
+  is_active: boolean;
+  created_at?: string;
+  last_used_at?: string;
 }
 
 export interface APIKeyListResponse {
@@ -233,70 +173,25 @@ export interface APIKeyListResponse {
   data: APIKey[];
 }
 
-export interface CreateAPIKeyRequest {
-  name: string;
-  permissions?: string[];
-  expiresIn?: number; // days
-}
-
 export interface CreateAPIKeyResponse {
   success: boolean;
   data: {
+    key: string;         // Full key shown only once: sk_live_xyz...
     id: string;
-    name: string;
-    key: string; // Only shown once
-    createdAt: string;
   };
-  message?: string;
 }
 
 // ============================================
-// Webhook Types
+// Webhook Types (B2B)
 // ============================================
 
-export type WebhookEvent = 
-  | 'deposit_completed' 
-  | 'withdraw_completed' 
-  | 'withdraw_failed' 
-  | 'balance_updated';
-
-export interface WebhookConfig {
-  id: string;
-  url: string;
-  secret: string;
-  events: WebhookEvent[];
-  status: 'active' | 'inactive';
-  createdAt: string;
-  updatedAt: string;
-  lastTriggeredAt?: string;
-  failureCount: number;
+export interface WebhookConfigRequest {
+  webhook_url: string;
 }
 
-export interface WebhookListResponse {
+export interface WebhookConfigResponse {
   success: boolean;
-  data: WebhookConfig[];
-}
-
-export interface CreateWebhookRequest {
-  url: string;
-  events: WebhookEvent[];
-  secret?: string;
-}
-
-export interface UpdateWebhookRequest {
-  url?: string;
-  events?: WebhookEvent[];
-  status?: 'active' | 'inactive';
-}
-
-export interface WebhookTestResponse {
-  success: boolean;
-  data: {
-    sent: boolean;
-    statusCode?: number;
-    responseTime?: number;
-    error?: string;
-  };
+  webhook_url: string;
 }
 
 // ============================================
@@ -312,31 +207,9 @@ export interface APIError {
   };
 }
 
-export interface ValidationError {
-  success: false;
-  error: {
-    code: 'VALIDATION_ERROR';
-    message: string;
-    details: Record<string, string[]>;
-  };
-}
-
 // ============================================
-// Common Response Types
+// Common Types
 // ============================================
-
-export interface PaginatedResponse<T> {
-  success: boolean;
-  data: {
-    items: T[];
-    pagination: {
-      page: number;
-      limit: number;
-      total: number;
-      totalPages: number;
-    };
-  };
-}
 
 export interface MessageResponse {
   success: boolean;
