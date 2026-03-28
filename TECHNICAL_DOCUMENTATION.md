@@ -756,13 +756,33 @@ type WebhookEvent =
 
 ---
 
-## 📞 Contato & Suporte
+## 🚀 Deploy no Vercel
 
-**Plataforma**: nexpay.nextrustx.com  
-**API Base**: https://api-wallet.nextrustx.com/api/v1  
-**Documentação API**: Disponível no endpoint /docs (futuro)
+### Variáveis de Ambiente Obrigatórias
+
+| Variável | Valor | Descrição |
+|----------|-------|-----------|
+| `NEXT_PUBLIC_API_URL` | `https://api-wallet.nextrustx.com/api/v1` | URL base da API backend |
+
+### Variáveis Opcionais
+
+| Variável | Valor | Descrição |
+|----------|-------|-----------|
+| `NEXTAUTH_SECRET` | `(gerar com openssl rand -base64 32)` | Secret para NextAuth.js |
+| `NEXTAUTH_URL` | `https://app.nextrustx.com` | URL da aplicação em produção |
+
+### Domínio de Produção
+- **URL**: https://app.nextrustx.com
+- **API**: https://api-wallet.nextrustx.com/api/v1
+
+### Passos para Deploy
+
+1. Importar repositório no Vercel: `nextrustx-hub/NeXPay-WebApp`
+2. Configurar variáveis de ambiente
+3. Deploy automático
 
 ---
 
 *Documentação gerada em: Janeiro 2025*  
-*Versão do documento: 1.0*
+*Versão do documento: 2.0*  
+*Repositório: https://github.com/nextrustx-hub/NeXPay-WebApp*
